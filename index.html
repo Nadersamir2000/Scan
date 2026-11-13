@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>سكانر الأسعار</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f5f0;--card:#fff;--ink:#1b1f23;--mute:#6b7280;--line:#e2e0d6;--tag:#ffd23f;--tagink:#1b1f23;--ok:#1f8a4c;--bad:#c8372d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171a;--card:#1d2226;--ink:#f1f1ec;--mute:#9aa3ad;--line:#2d343a;--ok:#4cc58000;--ok:#4cc580;--bad:#ff7a70}}
+:root[data-theme="dark"]{--bg:#14171a;--card:#1d2226;--ink:#f1f1ec;--mute:#9aa3ad;--line:#2d343a;--ok:#4cc580;--bad:#ff7a70}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Cairo",system-ui,sans-serif;line-height:1.5}
+main{max-width:520px;margin:0 auto;padding:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+h1{font-size:20px;margin:0;font-weight:800}
+.meta{font-size:13px;color:var(--mute)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--line);padding:4px;border-radius:12px;margin-bottom:12px}
+.tabs button{border:0;background:transparent;color:var(--ink);font:600 15px Cairo,sans-serif;padding:10px;border-radius:9px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+button:focus-visible,input:focus-visible,label:focus-within{outline:3px solid #3b82f6;outline-offset:2px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+#scan{width:100%;font:600 20px Cairo,sans-serif;padding:14px;border:2px solid var(--ink);border-radius:10px;background:var(--bg);color:var(--ink);direction:ltr;text-align:center}
+.hint{font-size:13px;color:var(--mute);margin:8px 0 0}
+.row{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px}
+#reader{width:100%;border-radius:10px;overflow:hidden;background:#000;min-height:0}
+.btn{border:1px solid var(--ink);background:var(--card);color:var(--ink);font:600 14px Cairo,sans-serif;padding:9px 14px;border-radius:9px;cursor:pointer}
+.btn.main{background:var(--ink);color:var(--bg)}
+.result{border-radius:16px;padding:18px;text-align:center;border:1px solid var(--line);background:var(--card);min-height:170px;display:flex;flex-direction:column;justify-content:center}
+.result.found{background:var(--tag);color:var(--tagink);border:0;border-top:10px dotted rgba(0,0,0,.25)}
+.result.miss{border:2px solid var(--bad)}
+.pname{font-size:22px;font-weight:800;margin:0}
+.price{font-size:72px;font-weight:800;line-height:1.1;margin:4px 0;font-variant-numeric:tabular-nums}
+.price small{font-size:22px;font-weight:600;margin-inline-start:6px}
+.code{direction:ltr;font-size:14px;opacity:.75}
+.empty{color:var(--mute);font-size:16px}
+.miss .pname{color:var(--bad)}
+ul{list-style:none;padding:0;margin:0}
+li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+li:last-child{border:0}
+li b{font-variant-numeric:tabular-nums;white-space:nowrap}
+li.no b{color:var(--bad)}
+h2{font-size:15px;margin:0 0 6px}
+#msg{font-size:14px;margin-top:8px;min-height:20px}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>سكانر الأسعار</h1>
+  <span class="meta" id="count"></span>
+</header>
+
+<div class="tabs" role="group" aria-label="طريقة المسح">
+  <button id="tabDev" aria-pressed="true">جهاز السكانر</button>
+  <button id="tabCam" aria-pressed="false">كاميرا الموبايل</button>
+</div>
+
+<section class="panel" id="devPanel">
+  <input id="scan" type="text" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="اسكان الباركود" aria-label="الباركود">
+  <p class="hint">اضغط زرار السكانر في الجهاز، والسعر هيظهر لوحده.</p>
+  <label class="row"><input type="checkbox" id="manual"> كتابة الباركود يدوياً</label>
+</section>
+
+<section class="panel" id="camPanel" hidden>
+  <label class="btn main" for="shot" style="display:block;text-align:center;font-size:18px;padding:16px">📷 صوّر الباركود</label>
+  <input id="shot" type="file" accept="image/*" capture="environment">
+  <p class="hint" id="shotHint">اضغط الزرار، صوّر الباركود من قريب وبإضاءة كويسة، والسعر هيظهر.</p>
+  <div id="reader" style="display:none"></div>
+  <div class="row"><button class="btn main" id="camBtn">تشغيل الكاميرا (معاينة حية)</button></div>
+  <p class="hint" id="camHint"></p>
+</section>
+
+<div class="result" id="result" aria-live="polite"><span class="empty">اسكان أي منتج عشان يظهر سعره</span></div>
+
+<section class="panel" style="margin-top:12px">
+  <h2>آخر عمليات المسح</h2>
+  <ul id="hist"><li><span class="meta">لسه مفيش</span></li></ul>
+</section>
+
+<section class="panel">
+  <h2>ملف الأسعار</h2>
+  <label class="btn main" for="file" style="display:inline-block">استيراد ملف إكسل</label>
+  <input id="file" type="file" accept=".xls,.xlsx,.csv">
+  <p class="hint">الملف لازم يكون فيه أعمدة: الاسم، السعر، الباركود. الملف الجديد بيحل محل القديم ويتحفظ على الجهاز.</p>
+  <div id="msg"></div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+const DEFAULT=[["family 275p bag",25,"6223007652261"],["dairy 8 p box",21,"6223000204917"],["molto 5 p",5,"6223000494103"],["Zeina",30,"6223001240655"]];
+const $=id=>document.getElementById(id);
+let db=new Map(), total=0, hist=[], mode="dev", cam=null, camOn=false, lastCode="", lastAt=0, idle=null;
+
+function norm(v){return String(v==null?"":v).trim().replace(/\s+/g,"")}
+function load(rows){db=new Map();rows.forEach(([n,p,b])=>{const k=norm(b);if(k)db.set(k,{name:n,price:p})});total=db.size;$("count").textContent=total+" منتج"}
+function save(rows){try{localStorage.setItem("pricedb",JSON.stringify(rows))}catch(e){}}
+function boot(){let rows=DEFAULT;try{const s=localStorage.getItem("pricedb");if(s){const j=JSON.parse(s);if(Array.isArray(j)&&j.length)rows=j}}catch(e){}load(rows)}
+function find(code){const k=norm(code);if(db.has(k))return db.get(k);const z=k.replace(/^0+/,"");for(const [kk,v] of db){if(kk.replace(/^0+/,"")===z)return v}return null}
+function fmt(p){const n=Number(p);return isNaN(n)?String(p):(Math.round(n*100)/100).toLocaleString("en-US")}
+
+let ac;function beep(ok){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=ok?1100:300;g.gain.value=.15;o.start();o.stop(ac.currentTime+(ok?.12:.35))}catch(e){}
+  if(navigator.vibrate)navigator.vibrate(ok?60:[120,60,120])}
+
+function lookup(code){
+  code=norm(code);if(!code)return;
+  const r=find(code),box=$("result");
+  if(r){box.className="result found";box.innerHTML='<p class="pname"></p><div class="price"><span></span><small>جنيه</small></div><div class="code"></div>';
+    box.querySelector(".pname").textContent=r.name;box.querySelector(".price span").textContent=fmt(r.price);box.querySelector(".code").textContent=code}
+  else{box.className="result miss";box.innerHTML='<p class="pname">المنتج مش موجود في الملف</p><div class="code"></div>';box.querySelector(".code").textContent=code}
+  beep(!!r);
+  hist.unshift({code,name:r?r.name:"غير موجود",price:r?fmt(r.price):"",ok:!!r});hist=hist.slice(0,6);
+  $("hist").innerHTML="";hist.forEach(h=>{const li=document.createElement("li");if(!h.ok)li.className="no";const a=document.createElement("span"),b=document.createElement("b");a.textContent=h.name;b.textContent=h.ok?h.price:h.code;li.append(a,b);$("hist").append(li)});
+}
+
+/* hardware scanner (keyboard wedge) */
+const inp=$("scan");
+function focusScan(){if(mode==="dev"&&!$("manual").checked)inp.focus({preventScroll:true})}
+function submitScan(){const v=inp.value;inp.value="";clearTimeout(idle);lookup(v);focusScan()}
+inp.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();submitScan()}});
+inp.addEventListener("input",()=>{clearTimeout(idle);if(!$("manual").checked&&inp.value.length>=6)idle=setTimeout(submitScan,300)});
+inp.addEventListener("blur",()=>setTimeout(focusScan,150));
+document.addEventListener("click",e=>{if(!e.target.closest("button,label,input"))focusScan()});
+$("manual").addEventListener("change",e=>{inp.inputMode=e.target.checked?"text":"none";inp.blur();setTimeout(()=>inp.focus(),50)});
+
+/* tabs + camera */
+function setMode(m){mode=m;$("tabDev").setAttribute("aria-pressed",m==="dev");$("tabCam").setAttribute("aria-pressed",m==="cam");
+  $("devPanel").hidden=m!=="dev";$("camPanel").hidden=m!=="cam";if(m==="dev"){stopCam();focusScan()}}
+$("tabDev").onclick=()=>setMode("dev");$("tabCam").onclick=()=>setMode("cam");
+async function startCam(){
+  if(typeof Html5Qrcode==="undefined"){$("camHint").textContent="مكتبة الكاميرا مش متحملة. اتأكد من الإنترنت وحدّث الصفحة.";return}
+  $("reader").style.display="block";
+  try{const F=Html5QrcodeSupportedFormats;cam=cam||new Html5Qrcode("reader",{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_128,F.CODE_39,F.ITF],verbose:false});
+    await cam.start({facingMode:"environment"},{fps:10,qrbox:{width:260,height:150}},txt=>{const t=Date.now();if(txt===lastCode&&t-lastAt<2000)return;lastCode=txt;lastAt=t;lookup(txt)},()=>{});
+    camOn=true;$("camBtn").textContent="إيقاف الكاميرا";$("camHint").textContent="وجّه الكاميرا ناحية الباركود."}
+  catch(e){$("reader").style.display="none";$("camHint").textContent="الكاميرا مش شغالة. اسمح للموقع باستخدام الكاميرا من إعدادات المتصفح، أو استخدم زرار التصوير فوق."}
+}
+async function stopCam(){if(cam&&camOn){try{await cam.stop()}catch(e){}}camOn=false;$("reader").style.display="none";$("camBtn").textContent="تشغيل الكاميرا (معاينة حية)"}
+$("camBtn").onclick=()=>camOn?stopCam():startCam();
+
+/* photo capture */
+const FMT=["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf"];
+async function decodePhoto(file){
+  let bmp=null;try{bmp=await createImageBitmap(file)}catch(e){}
+  if(bmp&&"BarcodeDetector" in window){try{const r=await new BarcodeDetector({formats:FMT}).detect(bmp);if(r.length)return r[0].rawValue}catch(e){}}
+  let f=file;
+  if(bmp){const s=Math.min(1,1400/Math.max(bmp.width,bmp.height)),c=document.createElement("canvas");c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);const bl=await new Promise(r=>c.toBlob(r,"image/jpeg",.92));if(bl)f=new File([bl],"s.jpg",{type:"image/jpeg"})}
+  if(typeof Html5Qrcode==="undefined")throw new Error("nolib");
+  const F=Html5QrcodeSupportedFormats;cam=cam||new Html5Qrcode("reader",{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_128,F.CODE_39,F.ITF],verbose:false});
+  return await cam.scanFile(f,false);
+}
+$("shot").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;const h=$("shotHint");h.textContent="بقرأ الباركود...";
+  try{const code=await decodePhoto(f);h.textContent="اضغط الزرار وصوّر المنتج اللي بعده.";lookup(code)}
+  catch(err){h.textContent="مقدرتش أقرأ الباركود. صوّره أقرب، بإضاءة أحسن، والباركود أفقي وواضح في الصورة.";beep(false)}
+  e.target.value="";
+});
+
+/* excel import */
+$("file").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;const m=$("msg");
+  if(typeof XLSX==="undefined"){m.style.color="var(--bad)";m.textContent="مكتبة الإكسل مش متحملة. اتأكد من الإنترنت.";return}
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});
+    const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""});
+    const h=(data[0]||[]).map(x=>String(x).toLowerCase());
+    const idx=re=>h.findIndex(x=>re.test(x));
+    let ib=idx(/barcode|code|باركود|كود/),ip=idx(/price|سعر/),inm=idx(/name|product|اسم|منتج|صنف/);
+    let start=1;if(ib<0||ip<0||inm<0){ib=0;inm=1;ip=2;start=(isNaN(Number(data[0]&&data[0][2]))?1:0)}
+    const rows=[];for(let i=start;i<data.length;i++){const r=data[i];const b=norm(r[ib]);if(!b)continue;rows.push([String(r[inm]),r[ip],b])}
+    if(!rows.length)throw new Error("empty");
+    load(rows);save(rows);m.style.color="var(--ok)";m.textContent="تم استيراد "+rows.length+" منتج.";
+  }catch(err){m.style.color="var(--bad)";m.textContent="مقدرتش أقرأ الملف. اتأكد إن فيه أعمدة الاسم والسعر والباركود.";}
+  e.target.value="";focusScan();
+});
+
+boot();focusScan();
+</script>
+</body>
+</html>
